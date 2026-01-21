@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { analyzeDocument, generateDocumentByTemplateDocx } from "@/api/document"
-import type { Journal } from "@/api/document"
+import type { Journal, AIProvider } from "@/api/document"
 import { extractTextFromDocx } from "@/utils/docxReader"
 import { UploadStep } from "./UploadStep"
 import { JournalsStep } from "./JournalsStep"
@@ -19,10 +19,11 @@ export function UploadForm() {
   const [originalDocumentContent, setOriginalDocumentContent] = useState<string | null>(null)
   const [generatedDocumentFile, setGeneratedDocumentFile] = useState<File | null>(null)
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null)
+  const [selectedAIProvider, setSelectedAIProvider] = useState<AIProvider>('gemini')
 
   const analyzeMutation = useMutation({
-    mutationFn: async (documentContent: string) => {
-      return await analyzeDocument(documentContent)
+    mutationFn: async ({ documentContent, aiProvider }: { documentContent: string; aiProvider?: AIProvider }) => {
+      return await analyzeDocument(documentContent, aiProvider)
     },
     onSuccess: (data) => {
       setAnalysisResult(data.journals)
@@ -34,8 +35,8 @@ export function UploadForm() {
   })
 
   const generateMutation = useMutation({
-    mutationFn: async ({ documentContent, templateId }: { documentContent: string; templateId: string }) => {
-      return await generateDocumentByTemplateDocx(documentContent, templateId)
+    mutationFn: async ({ documentContent, templateId, aiProvider }: { documentContent: string; templateId: string; aiProvider?: AIProvider }) => {
+      return await generateDocumentByTemplateDocx(documentContent, templateId, aiProvider)
     },
     onSuccess: async (docxBlob) => {
       const fileName = `${selectedFileName || 'document'}_formatted.docx`
@@ -50,7 +51,7 @@ export function UploadForm() {
     },
   })
 
-  const handleAnalyze = async (file: File) => {
+  const handleAnalyze = async (file: File, aiProvider?: AIProvider) => {
     try {
       setSelectedFileName(file.name)
       // Extract text content from docx file
@@ -59,8 +60,11 @@ export function UploadForm() {
       // Store original content for later use in generation
       setOriginalDocumentContent(documentContent)
       
+      // Use provided aiProvider or fallback to selectedAIProvider
+      const providerToUse = aiProvider || selectedAIProvider
+      
       // Analyze document
-      analyzeMutation.mutate(documentContent)
+      analyzeMutation.mutate({ documentContent, aiProvider: providerToUse })
     } catch (error) {
       console.error('Error processing document:', error)
     }
@@ -72,6 +76,7 @@ export function UploadForm() {
     generateMutation.mutate({
       documentContent: originalDocumentContent,
       templateId: journal.templateId,
+      aiProvider: selectedAIProvider,
     })
   }
 
@@ -82,6 +87,7 @@ export function UploadForm() {
     setSelectedJournal(null)
     setSelectedFileName(null)
     setCurrentStep('upload')
+    // Keep AI provider selection on reset
     analyzeMutation.reset()
     generateMutation.reset()
   }
@@ -93,16 +99,29 @@ export function UploadForm() {
     generateMutation.reset()
   }
 
+  // Extract error message from mutation error
+  const extractErrorMessage = (error: unknown): string | null => {
+    if (!error) return null;
+    
+    // Handle AxiosError (from api client)
+    if (typeof error === 'object' && 'message' in error) {
+      return (error as { message: string }).message;
+    }
+    
+    // Handle Error instance
+    if (error instanceof Error) {
+      return error.message;
+    }
+    
+    return 'An unexpected error occurred';
+  };
+
   const analyzeError = analyzeMutation.isError 
-    ? (analyzeMutation.error instanceof Error 
-        ? analyzeMutation.error.message 
-        : 'Failed to analyze document. Please try again.')
+    ? extractErrorMessage(analyzeMutation.error)
     : null
 
   const generateError = generateMutation.isError
-    ? (generateMutation.error instanceof Error 
-        ? generateMutation.error.message 
-        : 'Failed to generate document. Please try again.')
+    ? extractErrorMessage(generateMutation.error)
     : null
 
   // Step 3: Show generated document
@@ -114,6 +133,8 @@ export function UploadForm() {
         fileName={selectedFileName}
         onBackToJournals={handleBackToJournals}
         onReset={handleResetForm}
+        selectedAIProvider={selectedAIProvider}
+        onAIProviderChange={setSelectedAIProvider}
       />
     )
   }
@@ -128,6 +149,8 @@ export function UploadForm() {
         selectedJournalId={selectedJournal?.id || null}
         onReset={handleResetForm}
         error={generateError}
+        selectedAIProvider={selectedAIProvider}
+        onAIProviderChange={setSelectedAIProvider}
       />
     )
   }
@@ -138,6 +161,8 @@ export function UploadForm() {
       onAnalyze={handleAnalyze}
       isAnalyzing={analyzeMutation.isPending}
       error={analyzeError}
+      selectedAIProvider={selectedAIProvider}
+      onAIProviderChange={setSelectedAIProvider}
     />
   )
 }

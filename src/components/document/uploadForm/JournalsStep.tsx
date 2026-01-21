@@ -1,6 +1,9 @@
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { Journal } from "@/api/document"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Field, FieldDescription } from "@/components/ui/field"
+import type { Journal, AIProvider } from "@/api/document"
 
 interface JournalsStepProps {
   journals: Journal[]
@@ -9,6 +12,8 @@ interface JournalsStepProps {
   selectedJournalId?: string | null
   onReset: () => void
   error?: string | null
+  selectedAIProvider?: AIProvider
+  onAIProviderChange?: (provider: AIProvider) => void
 }
 
 /**
@@ -21,6 +26,8 @@ export function JournalsStep({
   selectedJournalId,
   onReset,
   error,
+  selectedAIProvider,
+  onAIProviderChange,
 }: JournalsStepProps) {
   return (
     <div>
@@ -30,6 +37,28 @@ export function JournalsStep({
         <p className="text-muted-foreground">
           Based on your document analysis, here are the journals where you can publish:
         </p>
+      </div>
+
+      <div className="mb-6">
+        <Field>
+          <Label htmlFor="aiProvider">AI Provider</Label>
+          <Select
+            value={selectedAIProvider || 'gemini'}
+            onValueChange={(value) => onAIProviderChange?.(value as AIProvider)}
+          >
+            <SelectTrigger id="aiProvider" className="w-full">
+              <SelectValue placeholder="Select AI provider" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="openai">OpenAI</SelectItem>
+              <SelectItem value="claude">Claude</SelectItem>
+              <SelectItem value="gemini">Gemini</SelectItem>
+            </SelectContent>
+          </Select>
+          <FieldDescription>
+            Choose the AI model to use for document generation
+          </FieldDescription>
+        </Field>
       </div>
 
       <div className="space-y-3 mb-6">
@@ -63,7 +92,7 @@ export function JournalsStep({
                     Generating...
                   </>
                 ) : (
-                  'Згенерувати документ'
+                  'Generate document'
                 )}
               </Button>
             </div>
@@ -81,7 +110,7 @@ export function JournalsStep({
         type="button"
         onClick={onReset}
       >
-        Завантажити інший документ
+        Upload another document
       </Button>
     </div>
   )

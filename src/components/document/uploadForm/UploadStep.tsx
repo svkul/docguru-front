@@ -6,8 +6,11 @@ import { Upload, FileText, X, Eye, Loader2 } from "lucide-react"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldSet } from "@/components/ui/field"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DocumentPreviewDialog } from "@/components/document/DocumentPreviewDialog"
 import { cn } from "@/lib/utils"
+import type { AIProvider } from "@/api/document"
 
 const uploadSchema = z.object({
   file: z.instanceof(FileList)
@@ -23,15 +26,23 @@ const uploadSchema = z.object({
 type UploadFormValues = z.infer<typeof uploadSchema>
 
 interface UploadStepProps {
-  onAnalyze: (file: File) => Promise<void>
+  onAnalyze: (file: File, aiProvider?: AIProvider) => Promise<void>
   isAnalyzing: boolean
   error?: string | null
+  selectedAIProvider?: AIProvider
+  onAIProviderChange?: (provider: AIProvider) => void
 }
 
 /**
  * Step 1: Document upload and analysis
  */
-export function UploadStep({ onAnalyze, isAnalyzing, error }: UploadStepProps) {
+export function UploadStep({ 
+  onAnalyze, 
+  isAnalyzing, 
+  error,
+  selectedAIProvider,
+  onAIProviderChange,
+}: UploadStepProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
@@ -95,7 +106,7 @@ export function UploadStep({ onAnalyze, isAnalyzing, error }: UploadStepProps) {
   const onSubmit = async (values: UploadFormValues) => {
     const file = values.file[0]
     if (!file) return
-    await onAnalyze(file)
+    await onAnalyze(file, selectedAIProvider)
   }
 
   const selectedFile = selectedFileName ? form.getValues("file")?.[0] : undefined
@@ -209,6 +220,26 @@ export function UploadStep({ onAnalyze, isAnalyzing, error }: UploadStepProps) {
             </FieldDescription>
 
             <FieldError errors={form.formState.errors.file ? [form.formState.errors.file] : undefined} />
+          </Field>
+
+          <Field>
+            <Label htmlFor="aiProvider">AI Provider</Label>
+            <Select
+              value={selectedAIProvider || 'gemini'}
+              onValueChange={(value) => onAIProviderChange?.(value as AIProvider)}
+            >
+              <SelectTrigger id="aiProvider" className="w-full">
+                <SelectValue placeholder="Select AI provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="openai">OpenAI</SelectItem>
+                <SelectItem value="claude">Claude</SelectItem>
+                <SelectItem value="gemini">Gemini</SelectItem>
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              Choose the AI model to use for document analysis
+            </FieldDescription>
           </Field>
         </FieldGroup>
       </FieldSet>

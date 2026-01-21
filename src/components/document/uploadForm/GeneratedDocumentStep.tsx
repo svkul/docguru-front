@@ -1,7 +1,10 @@
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Field, FieldDescription } from "@/components/ui/field"
 import { DocumentPreviewDialog } from "@/components/document/DocumentPreviewDialog"
-import type { Journal } from "@/api/document"
+import type { Journal, AIProvider } from "@/api/document"
 
 interface GeneratedDocumentStepProps {
   generatedDocumentFile: File
@@ -9,6 +12,8 @@ interface GeneratedDocumentStepProps {
   fileName?: string | null
   onBackToJournals: () => void
   onReset: () => void
+  selectedAIProvider?: AIProvider
+  onAIProviderChange?: (provider: AIProvider) => void
 }
 
 /**
@@ -20,6 +25,8 @@ export function GeneratedDocumentStep({
   fileName,
   onBackToJournals,
   onReset,
+  selectedAIProvider,
+  onAIProviderChange,
 }: GeneratedDocumentStepProps) {
   const handleDownload = () => {
     const url = URL.createObjectURL(generatedDocumentFile)
@@ -56,27 +63,49 @@ export function GeneratedDocumentStep({
         </div>
       </div>
 
+      <div className="mb-4">
+        <Field>
+          <Label htmlFor="aiProvider">AI Provider</Label>
+          <Select
+            value={selectedAIProvider || 'gemini'}
+            onValueChange={(value) => onAIProviderChange?.(value as AIProvider)}
+          >
+            <SelectTrigger id="aiProvider" className="w-full">
+              <SelectValue placeholder="Select AI provider" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="openai">OpenAI</SelectItem>
+              <SelectItem value="claude">Claude</SelectItem>
+              <SelectItem value="gemini">Gemini</SelectItem>
+            </SelectContent>
+          </Select>
+          <FieldDescription>
+            AI model used for document generation
+          </FieldDescription>
+        </Field>
+      </div>
+
       <div className="flex gap-3">
         <Button 
           type="button"
           onClick={onBackToJournals}
         >
           <ArrowLeft className="mr-2 size-4" />
-          Назад до вибору шаблону
+          Back to template selection
         </Button>
 
         <Button
           type="button"
           onClick={handleDownload}
         >
-          Завантажити .docx
+          Download .docx
         </Button>
 
         <Button 
           type="button"
           onClick={onReset}
         >
-          Завантажити інший документ
+          Upload another document
         </Button>
       </div>
     </div>
